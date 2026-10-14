@@ -102,6 +102,22 @@ export function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
+export interface ConfirmUpiParams {
+  order_id?: string;
+  utr?: string;
+  method?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  event_id?: string;
+  event_name?: string;
+  pass_id?: string;
+  pass_name?: string;
+  night?: string;
+  qty?: number;
+  final_amount?: number;
+}
+
 /**
  * Request server-side price calculation
  */
@@ -109,7 +125,8 @@ export async function calculatePrice(
   eventId: string,
   passId: string,
   qty: number,
-  couponCode?: string | null
+  couponCode?: string | null,
+  unitPrice?: number
 ): Promise<PaymentCalculationResult> {
   try {
     const res = await fetch("/api/payment/calculate", {
@@ -120,6 +137,7 @@ export async function calculatePrice(
         pass_id: passId,
         qty,
         coupon_code: couponCode,
+        unit_price: unitPrice,
       }),
     });
     const data = await res.json();
@@ -131,11 +149,12 @@ export async function calculatePrice(
   }
 
   // Client calculation fallback if server is starting
-  const subtotal = 499 * qty;
+  const basePrice = unitPrice && unitPrice > 0 ? unitPrice : 499;
+  const subtotal = basePrice * qty;
   const fee = Math.max(15, Math.round(subtotal * 0.02));
   const tax = Math.round(fee * 0.18);
   return {
-    unit_price: 499,
+    unit_price: basePrice,
     quantity: qty,
     subtotal,
     discount: 0,
@@ -149,7 +168,7 @@ export async function calculatePrice(
 /**
  * Create Order on backend
  */
-export async function createServerOrder(params: CreateOrderParams): Promise<CreateOrderResponse> {
+export async function createServerOrder(params: CreateOrderParams & { unit_price?: number }): Promise<CreateOrderResponse> {
   const res = await fetch("/api/payment/create-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -162,6 +181,24 @@ export async function createServerOrder(params: CreateOrderParams): Promise<Crea
   }
 
   return res.json();
+}
+
+/**
+ * Confirm Direct UPI payment on backend
+ */
+export async function confirmUpiPaymentOnServer(params: ConfirmUpiParams): Promise<VerifyPaymentResponse> {
+  const res = await fetch("/api/payment/confirm-upi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Failed to confirm UPI payment on server");
+  }
+
+  return data;
 }
 
 /**

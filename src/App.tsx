@@ -198,53 +198,53 @@ export default function App() {
 
               <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 md:grid-cols-[1.3fr_1fr]">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold tracking-wide">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-[#f59e0b] animate-ping" />
-                    <span>SURAT NI NAVRATRI 2026 • OFFICIAL PASS PORTAL</span>
+                    <span>SURAT NI NAVRATRI 2026 • AAPNO PASS</span>
                   </div>
                   
-                  <h1 className="mt-5 font-display font-black text-4xl sm:text-5xl md:text-6xl leading-[1.08] text-neutral-900 tracking-tight">
-                    Experience Surat’s Most Celebrated Festive & Musical Nights.
+                  <h1 className="mt-4 font-display font-black text-3xl sm:text-5xl md:text-6xl leading-[1.1] text-neutral-900 tracking-tight">
+                    Surat Ni Navratri, Aapno Pass.
                   </h1>
 
-                  <p className="mt-5 max-w-lg text-base sm:text-lg text-neutral-600 leading-relaxed font-normal">
-                    Direct gate entry with instant QR codes, 100% verified organizers, and seamless Razorpay checkout for couples, season passes, and VIP arenas across Surat.
+                  <p className="mt-4 max-w-lg text-sm sm:text-base text-neutral-600 leading-relaxed font-normal">
+                    Discover Surat's finest Navratri Garba venues, book verified passes with instant UPI payments, and get your gate turnstile QR code.
                   </p>
 
-                  <div className="mt-8 flex flex-wrap gap-3">
+                  <div className="mt-7 flex flex-wrap gap-3">
                     <button
                       onClick={() => {
                         const el = document.getElementById("events-catalog");
                         el?.scrollIntoView({ behavior: "smooth" });
                       }}
-                      className="rounded-full bg-neutral-900 hover:bg-neutral-800 px-7 py-3.5 text-xs sm:text-sm font-bold text-white shadow-lg transition cursor-pointer flex items-center gap-2"
+                      className="rounded-full bg-neutral-900 hover:bg-neutral-800 px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition cursor-pointer flex items-center gap-2"
                     >
                       <Flame className="w-4 h-4 text-amber-400" />
-                      <span>Explore Navratri Passes</span>
+                      <span>Explore Passes</span>
                     </button>
 
                     <button
                       onClick={() => handleSelectTab("my-passes")}
-                      className="rounded-full bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 px-6 py-3.5 text-xs sm:text-sm font-semibold text-neutral-800 transition cursor-pointer flex items-center gap-2"
+                      className="rounded-full bg-white hover:bg-neutral-50 border border-neutral-300 px-5 py-3 text-xs sm:text-sm font-semibold text-neutral-800 transition cursor-pointer flex items-center gap-2"
                     >
                       <Ticket className="w-4 h-4 text-[#f59e0b]" />
-                      <span>Download Digital Pass</span>
+                      <span>My Passes</span>
                     </button>
                   </div>
 
                   {/* Highlights row */}
-                  <div className="mt-10 pt-6 border-t border-neutral-200 grid grid-cols-3 gap-4 text-xs">
+                  <div className="mt-8 pt-5 border-t border-neutral-200 grid grid-cols-3 gap-3 text-xs">
                     <div>
-                      <div className="font-display font-black text-2xl text-neutral-900">15+</div>
-                      <div className="text-[11px] text-neutral-500 font-medium">Surat Arenas & Domes</div>
+                      <div className="font-display font-black text-xl text-neutral-900">15+</div>
+                      <div className="text-[11px] text-neutral-500 font-medium">Surat Venues</div>
                     </div>
                     <div>
-                      <div className="font-display font-black text-2xl text-emerald-600">100%</div>
-                      <div className="text-[11px] text-neutral-500 font-medium">Verified Turnstile QR</div>
+                      <div className="font-display font-black text-xl text-emerald-600">100%</div>
+                      <div className="text-[11px] text-neutral-500 font-medium">Instant QR Pass</div>
                     </div>
                     <div>
-                      <div className="font-display font-black text-2xl text-amber-600">₹499</div>
-                      <div className="text-[11px] text-neutral-500 font-medium">Passes Starting</div>
+                      <div className="font-display font-black text-xl text-amber-600">Direct</div>
+                      <div className="text-[11px] text-neutral-500 font-medium">UPI Payment</div>
                     </div>
                   </div>
                 </div>
@@ -256,7 +256,7 @@ export default function App() {
                       <div className="ticket-notch w-80 rounded-3xl bg-neutral-950 border-2 border-neutral-800 p-6 text-white shadow-2xl">
                         <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.2em]">
                           <span className="text-[#f59e0b] font-bold">AapnoPass VIP</span>
-                          <span className="text-neutral-400 font-mono">AP-SURAT-8921</span>
+                          <span className="text-emerald-400 font-bold">VERIFIED GATE PASS</span>
                         </div>
                         
                         <p className="mt-3 font-display font-black text-xl leading-snug text-white">
@@ -394,80 +394,74 @@ export default function App() {
               )}
             </div>
 
-            {/* DISTINCTIVE YELLOW ORGANIZER BANNER FROM VIDEO PROTOTYPE */}
+            {/* ORGANIZER BANNER */}
             <section className="max-w-6xl mx-auto px-4 sm:px-6">
-              <div className="bg-[#FEEA85] text-neutral-950 border border-amber-300/80 rounded-3xl p-8 sm:p-10 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-                
-                {/* Decorative background glow */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-300/40 rounded-full blur-2xl pointer-events-none -mr-20 -mt-20" />
-
-                <div className="space-y-3 max-w-xl text-center md:text-left relative z-10">
-                  <span className="text-[10px] uppercase font-black tracking-widest bg-neutral-950 text-amber-300 px-3 py-1 rounded-full inline-block">
-                    FOR EVENT HOSTS & DOME ORGANIZERS
+              <div className="bg-[#FEEA85] text-neutral-950 border border-amber-300/80 rounded-3xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="space-y-2 text-center md:text-left">
+                  <span className="text-[10px] uppercase font-bold tracking-widest bg-neutral-950 text-amber-300 px-2.5 py-0.5 rounded-full inline-block">
+                    FOR EVENT ORGANIZERS
                   </span>
-                  
-                  <h3 className="font-display font-black text-2xl sm:text-3xl text-neutral-950 leading-tight">
-                    Host your Garba Mahotsav or Concert with AapnoPass
+                  <h3 className="font-display font-black text-xl sm:text-2xl text-neutral-950">
+                    Host your Garba Event with AapnoPass
                   </h3>
-
-                  <p className="text-xs sm:text-sm text-neutral-800 leading-relaxed font-medium">
-                    Deploy anti-counterfeit QR ticketing, automated turnstile gate check-ins, live revenue settlement via Razorpay, and instant WhatsApp pass broadcast to thousands of attendees.
+                  <p className="text-xs sm:text-sm text-neutral-800 font-medium max-w-xl">
+                    Automate digital ticketing, gate turnstile QR check-in, and instant pass delivery across Surat.
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 relative z-10 w-full md:w-auto">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     onClick={() => setIsAdminLoginOpen(true)}
-                    className="w-full sm:w-auto px-6 py-3 rounded-full text-xs font-bold bg-neutral-950 text-white hover:bg-neutral-800 transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+                    className="px-5 py-2.5 rounded-full text-xs font-bold bg-neutral-950 text-white hover:bg-neutral-800 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
                   >
                     <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Organizer Console</span>
+                    <span>Organizer Portal</span>
                   </button>
                   <a
                     href="https://wa.me/919825049909?text=Hello%2C%20I%20am%20an%20event%20organizer%20in%20Surat%20interested%20in%20listing%20our%20event%20on%20AapnoPass."
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full sm:w-auto px-5 py-3 rounded-full text-xs font-bold bg-white/90 hover:bg-white text-neutral-900 border border-amber-300/80 transition cursor-pointer text-center"
+                    className="px-4 py-2.5 rounded-full text-xs font-bold bg-white text-neutral-900 border border-neutral-300 hover:bg-neutral-50 transition cursor-pointer"
                   >
-                    WhatsApp Desk
+                    Contact Desk
                   </a>
                 </div>
               </div>
             </section>
 
-            {/* HOW IT WORKS / BANDHANI CULTURAL STEPS SECTION */}
+            {/* HOW IT WORKS */}
             <section className="max-w-6xl mx-auto px-4 sm:px-6">
-              <div className="grid gap-6 rounded-3xl bg-white border border-neutral-200/90 p-8 sm:p-10 shadow-xs md:grid-cols-4">
+              <div className="grid gap-6 rounded-3xl bg-white border border-neutral-200/90 p-6 sm:p-8 shadow-2xs md:grid-cols-4">
                 {[
                   {
                     step: "01",
-                    title: "Select Garba Arena",
-                    desc: "Choose from Surat's premier festive grounds including Sarsana Dome, VR Mall, and Tapi Riverfront.",
+                    title: "Select Venue",
+                    desc: "Choose from premier garba grounds across Surat.",
                   },
                   {
                     step: "02",
-                    title: "Choose Night & Pass",
-                    desc: "Pick Single Day, Couple, or All 9 Nights Season Pass with real-time pass availability.",
+                    title: "Choose Pass",
+                    desc: "Pick Single Day, Couple, or Full 9 Nights Season Pass.",
                   },
                   {
                     step: "03",
-                    title: "Instant UPI Checkout",
-                    desc: "Pay securely via Google Pay, PhonePe, Paytm, or BHIM with instant pass issuance via Razorpay.",
+                    title: "UPI Payment",
+                    desc: "Pay seamlessly with GPay, PhonePe, Paytm, or BHIM.",
                   },
                   {
                     step: "04",
-                    title: "Wristband Gate Entry",
-                    desc: "Show your digital pass QR at the turnstile gate for high-speed security check-in.",
+                    title: "QR Gate Entry",
+                    desc: "Show your digital QR code at the gate for fast entry.",
                   },
                 ].map((s) => (
-                  <div key={s.step} className="space-y-2">
-                    <p className="text-[#f59e0b] font-mono font-black text-2xl tracking-tight">
+                  <div key={s.step} className="space-y-1.5">
+                    <p className="text-[#f59e0b] font-mono font-black text-xl">
                       {s.step}
                     </p>
-                    <h4 className="font-display font-bold text-lg text-neutral-900">
+                    <h4 className="font-display font-bold text-base text-neutral-900">
                       {s.title}
                     </h4>
-                    <p className="text-xs text-neutral-600 leading-relaxed font-normal">
+                    <p className="text-xs text-neutral-600 font-normal">
                       {s.desc}
                     </p>
                   </div>
@@ -475,45 +469,34 @@ export default function App() {
               </div>
             </section>
 
-            {/* ACCORDION FAQ SECTION FROM VIDEO PROTOTYPE */}
-            <section className="max-w-4xl mx-auto px-4 sm:px-6 space-y-4">
-              <div className="text-center space-y-1.5 mb-8">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#f59e0b] bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                  NEED HELP?
+            {/* CONCISE FAQ SECTION */}
+            <section className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4">
+              <div className="text-center space-y-1 mb-6">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#f59e0b] bg-amber-50 px-3 py-0.5 rounded-full border border-amber-200">
+                  FAQ
                 </span>
-                <h3 className="font-display font-black text-2xl sm:text-3xl text-neutral-900">
-                  A few things you might be wondering.
+                <h3 className="font-display font-black text-2xl text-neutral-900">
+                  Frequently Asked Questions
                 </h3>
-                <p className="text-xs sm:text-sm text-neutral-500">
-                  Everything you need to know about Navratri Garba passes and digital check-ins in Surat.
-                </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {[
                   {
-                    q: "How do I receive my pass after paying with Razorpay?",
-                    a: "Upon completing your payment via Google Pay, PhonePe, Paytm, or Card, your digital pass with an anti-counterfeit QR code is generated instantly. You can access it anytime under the 'My Passes' tab, download the PDF, or save the ticket image to your phone.",
+                    q: "How do I receive my pass after UPI payment?",
+                    a: "Your digital pass with a verified turnstile QR code is issued immediately upon payment and saved in 'My Passes' on this website.",
                   },
                   {
-                    q: "What payment methods are supported on AapnoPass?",
-                    a: "We support 100% of Indian payment methods through Razorpay: UPI Apps (GPay, PhonePe, Paytm, BHIM, CRED), Credit/Debit Cards (Visa, Mastercard, RuPay), Net Banking (over 50+ Indian banks), and Wallets.",
+                    q: "How does 'Pay with your UPI App' work?",
+                    a: "Clicking 'Pay with your UPI App' opens all installed UPI apps on your phone with the exact amount and payee (aapnopaas@ptaxis) pre-filled.",
                   },
                   {
-                    q: "Is traditional Gujarati attire mandatory at Surat Garba venues?",
-                    a: "Yes! At all major venues (SIECC Sarsana, VR Festive Lawns, Althan Grounds, Dumas Road Domes), authentic traditional attire—Chaniya Choli for women and Kedia/Kurta Pajama for men—is strictly required to enter the dancing arena.",
+                    q: "Is traditional Gujarati attire mandatory?",
+                    a: "Yes, traditional Chaniya Choli for women and Kedia/Kurta Dhoti for men is strictly required to enter the garba grounds.",
                   },
                   {
-                    q: "How does gate QR entry work at the venue?",
-                    a: "Show the verified QR code from your 'My Passes' screen to the gate turnstile scanner. Once scanned, security staff issues your official RFID/cloth wristband for entry. Note that used passes cannot be re-scanned.",
-                  },
-                  {
-                    q: "Can I use discount coupon codes on my booking?",
-                    a: "Yes! Use coupon 'SURAT15' for 15% off up to ₹500, 'NAVRATRI100' for a flat ₹100 instant cash discount, or 'AAPNOPASS' for 10% off. The final payable amount is calculated server-side before initiating payment.",
-                  },
-                  {
-                    q: "Are season passes valid for all 9 nights?",
-                    a: "Yes, Season Passes give unlimited access for all nine nights of Navratri with a dedicated priority entry turnstile lane at the venue.",
+                    q: "How does gate QR entry work?",
+                    a: "Show your verified QR code from 'My Passes' to the gate scanner to receive your festival wristband.",
                   },
                 ].map((faq, i) => {
                   const isOpen = openFaqIndex === i;
@@ -524,22 +507,22 @@ export default function App() {
                     >
                       <button
                         onClick={() => setOpenFaqIndex(isOpen ? null : i)}
-                        className="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer hover:bg-neutral-50/60 transition"
+                        className="w-full text-left p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-neutral-50/60 transition"
                       >
-                        <span className="font-bold text-neutral-900 text-sm sm:text-base">
+                        <span className="font-bold text-neutral-900 text-sm">
                           {faq.q}
                         </span>
                         <span
-                          className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-transform ${
+                          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-transform ${
                             isOpen ? "bg-neutral-900 text-white rotate-180" : "bg-neutral-100 text-neutral-600"
                           }`}
                         >
-                          <ChevronDown className="w-4 h-4" />
+                          <ChevronDown className="w-3.5 h-3.5" />
                         </span>
                       </button>
 
                       {isOpen && (
-                        <div className="px-4 sm:px-5 pb-5 pt-1 text-neutral-600 text-xs sm:text-sm leading-relaxed border-t border-neutral-100">
+                        <div className="px-4 pb-4 pt-1 text-neutral-600 text-xs leading-relaxed border-t border-neutral-100">
                           {faq.a}
                         </div>
                       )}
@@ -561,15 +544,17 @@ export default function App() {
       />
 
       {/* Interactive Event Detail & Booking Modal */}
-      <EventDetailModal
-        event={selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        onViewPass={(bookingId) => {
-          setViewPassId(bookingId);
-          setCurrentTab("my-passes");
-        }}
-        onNotify={notify}
-      />
+      {selectedEvent && (
+        <EventDetailModal
+          event={selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onViewPass={(bookingId) => {
+            setViewPassId(bookingId);
+            setCurrentTab("my-passes");
+          }}
+          onNotify={notify}
+        />
+      )}
 
       {/* Admin Login Modal (Accessible only from side login) */}
       <AdminLoginModal

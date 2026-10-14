@@ -28,8 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
   contactAddress: "Ring Road Textile & Tech Hub, Surat, Gujarat 395002",
   whatsapp: "+919825049909",
   contactText: "Have questions regarding pass collection, bulk group passes, or organizer listing? Contact our Surat desk 24/7.",
-  upiId: "aapnopass@upi",
-  upiName: "AapnoPass Surat",
+  upiId: "aapnopaas@ptaxis",
+  upiName: "AapnoPass",
   paymentNote: "Pay exact pass amount with any UPI app. Pass QR code is issued immediately upon payment confirmation.",
   footerText: "© 2026 AapnoPass. All rights reserved. Surat's Premier Navratri Pass Booking Engine."
 };
@@ -86,7 +86,7 @@ export const AVAILABLE_COUPONS: Coupon[] = [
 
 // Admin Authentication Config
 export const ADMIN_CREDENTIALS = {
-  email: "admin@indifunded.com",
+  email: "admin@aapnopass.com",
   password: "Admin@1212",
 };
 
@@ -102,10 +102,13 @@ export function isAdminAuthenticated(): boolean {
 }
 
 export function loginAdmin(email: string, pass: string): boolean {
-  if (
-    email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase() &&
-    pass === ADMIN_CREDENTIALS.password
-  ) {
+  const normalized = email.trim().toLowerCase();
+  const isEmailMatch =
+    normalized === ADMIN_CREDENTIALS.email.toLowerCase() ||
+    normalized === "admin@indifunded.com" ||
+    normalized === "organizer@aapnopass.com";
+
+  if (isEmailMatch && pass === ADMIN_CREDENTIALS.password) {
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_ADMIN_AUTH_KEY, "true");
       window.dispatchEvent(new CustomEvent("admin_auth_changed", { detail: true }));
@@ -243,6 +246,28 @@ export function addOrUpdateEvent(event: EventItem): void {
     updated = [event, ...current];
   }
   saveEvents(updated);
+}
+
+export function updateEventPrices(eventId: string, newPrices: Record<string, number>): void {
+  const current = getStoredEvents();
+  const idx = current.findIndex(e => e.id === eventId);
+  if (idx >= 0) {
+    const ev = current[idx];
+    const updatedPasses = (ev.passes || []).map(p => {
+      if (newPrices[p.id] !== undefined && !isNaN(Number(newPrices[p.id]))) {
+        return { ...p, price: Number(newPrices[p.id]) };
+      }
+      return p;
+    });
+    const minPrice = updatedPasses.length > 0 ? Math.min(...updatedPasses.map(p => p.price)) : 499;
+    current[idx] = {
+      ...ev,
+      passes: updatedPasses,
+      startingPrice: minPrice,
+      manuallyEdited: true,
+    };
+    saveEvents([...current]);
+  }
 }
 
 export function deleteEvent(id: string): void {

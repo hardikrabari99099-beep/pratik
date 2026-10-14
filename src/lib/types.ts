@@ -59,6 +59,7 @@ export type EventItem = {
   offerBadge?: string;
   isPreNavratri?: boolean;
   isSoldOut?: boolean;
+  startingPrice?: number;
   rating?: number;
   syncStatus?: "approved" | "pending_review" | "draft";
   manuallyEdited?: boolean;

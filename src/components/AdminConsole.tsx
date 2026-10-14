@@ -18,14 +18,18 @@ import {
   Calendar,
   Layers,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Tag,
+  IndianRupee,
+  X
 } from "lucide-react";
-import type { EventItem, Booking, SyncLog } from "../lib/types";
+import type { EventItem, Booking, SyncLog, PassType } from "../lib/types";
 import {
   getStoredEvents,
   saveEvents,
   addOrUpdateEvent,
   deleteEvent,
+  updateEventPrices,
   getStoredBookings,
   updateBookingStatus,
   getStoredSyncLogs,
@@ -35,6 +39,7 @@ import {
   SURAT_AREAS
 } from "../lib/storage";
 import { LIVE_FASTTICKET_SURAT_CATALOG, convertSourceToEventItem } from "../lib/fastticket-copier";
+import { AiEventCreator } from "./AiEventCreator";
 
 interface AdminConsoleProps {
   onOpenFastTicketCopier: () => void;
@@ -47,7 +52,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   onLogout,
   onNotify,
 }) => {
-  const [activeTab, setActiveTab] = useState<"scanner" | "events" | "bookings" | "sync">("scanner");
+  const [activeTab, setActiveTab] = useState<"events" | "ai" | "scanner" | "bookings" | "sync">("events");
   const [events, setEvents] = useState<EventItem[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
@@ -60,6 +65,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     message: string;
     booking?: Booking;
   } | null>(null);
+
+  // Price Editing Modal State
+  const [priceEditingEvent, setPriceEditingEvent] = useState<EventItem | null>(null);
+  const [pricesInput, setPricesInput] = useState<{
+    single: number;
+    couple: number;
+    season: number;
+    vip: number;
+  }>({ single: 499, couple: 899, season: 3499, vip: 6999 });
 
   // New/Edit Event Form State
   const [showEventModal, setShowEventModal] = useState(false);
@@ -85,28 +99,63 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     };
   }, []);
 
-  // Handle gate scan simulation
-  const handleVerifyScan = (passIdToVerify?: string) => {
-    const targetId = (passIdToVerify || scanInput).trim().toUpperCase();
-    if (!targetId) return;
+  // Open Quick Price Editor
+  const handleOpenPriceEdit = (ev: EventItem) => {
+    setPriceEditingEvent(ev);
+    const pMap: Record<string, number> = {};
+    (ev.passes || []).forEach((p) => {
+      pMap[p.id] = p.price;
+    });
+    setPricesInput({
+      single: pMap.single || 499,
+      couple: pMap.couple || 899,
+      season: pMap.season || 3499,
+      vip: pMap.vip || 6999,
+    });
+  };
+
+  // Save Updated Prices
+  const handleSavePrices = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!priceEditingEvent) return;
+
+    updateEventPrices(priceEditingEvent.id, {
+      single: Number(pricesInput.single) || 499,
+      couple: Number(pricesInput.couple) || 899,
+      season: Number(pricesInput.season) || 3499,
+      vip: Number(pricesInput.vip) || 6999,
+    });
+
+    onNotify(`Prices updated successfully for "${priceEditingEvent.name}"!`);
+    setPriceEditingEvent(null);
+  };
+
+  // Handle gate scan simulation (clean input, no auto ID display)
+  const handleVerifyScan = (targetCode?: string) => {
+    const target = (targetCode || scanInput).trim().toUpperCase();
+    if (!target) return;
 
     const booking = bookings.find(
-      (b) => b.id.toUpperCase() === targetId || targetId.includes(b.id.toUpperCase())
+      (b) =>
+        (b.id && b.id.toUpperCase() === target) ||
+        (b.booking_id && b.booking_id.toUpperCase() === target) ||
+        (b.phone && b.phone.includes(target)) ||
+        (b.name && b.name.toUpperCase().includes(target))
     );
 
     if (!booking) {
       setScanResult({
         status: "error",
-        message: `Pass #${targetId} not found in Surat central database. Entry Denied!`,
+        message: `Pass "${target}" not found in Surat gate database. Entry Denied!`,
       });
-      onNotify("Scan Failed: Invalid Pass ID");
+      onNotify("Scan Failed: Pass Not Found");
       return;
     }
 
     if (booking.status === "USED") {
       setScanResult({
         status: "warning",
-        message: `Pass #${booking.id} was already used and scanned at gate! Re-entry restricted.`,
+        message: `Pass for ${booking.name} was already scanned at turnstile! Re-entry restricted.`,
         booking,
       });
       onNotify("Warning: Pass already scanned");
@@ -164,7 +213,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       addSyncLog(log);
       setIsSyncing(false);
       onNotify(`FastTicket Sync complete! ${added} new events added, ${updated} refreshed.`);
-    }, 1200);
+    }, 1000);
   };
 
   const handleToggleSoldOut = (event: EventItem) => {
@@ -183,6 +232,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const handleSaveEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvent?.name) return;
+
+    const sPrice = Number(pricesInput.single) || 499;
+    const cPrice = Number(pricesInput.couple) || 899;
+    const seaPrice = Number(pricesInput.season) || 3499;
+    const vPrice = Number(pricesInput.vip) || 6999;
 
     const fullItem: EventItem = {
       id: editingEvent.id || "ev-" + Date.now().toString(36),
@@ -207,12 +261,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       rules: editingEvent.rules || ["Valid QR pass required"],
       terms: editingEvent.terms || ["Non-refundable"],
       organizer: editingEvent.organizer || "Surat Cultural Guild",
-      coverImage: editingEvent.coverImage || "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=1200&auto=format&fit=crop&q=80",
+      coverImage:
+        editingEvent.coverImage ||
+        "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=1200&auto=format&fit=crop&q=80",
       nights: editingEvent.nights || ["3 Oct 2026", "4 Oct 2026", "5 Oct 2026", "6 Oct 2026", "7 Oct 2026"],
-      passes: editingEvent.passes || [
-        { id: "single", name: "Single Night Pass", price: 499, desc: "Entry for 1 night", left: 100 },
-        { id: "couple", name: "Couple Pass (1 Night)", price: 899, desc: "Entry for couple", left: 50 },
-        { id: "season", name: "All 9 Nights Season", price: 3499, desc: "All nights pass", left: 25, season: true },
+      passes: [
+        { id: "single", name: "Single Night Pass", price: sPrice, desc: "Entry for 1 night", left: 100 },
+        { id: "couple", name: "Couple Pass (1 Night)", price: cPrice, desc: "Entry for couple", left: 50 },
+        { id: "season", name: "All 9 Nights Season Pass", price: seaPrice, desc: "All nights pass", left: 25, season: true },
+        { id: "vip", name: "Royal VIP Season Pass", price: vPrice, desc: "VIP lounge & deck", left: 10, season: true, vip: true },
       ],
       active: true,
       sort: 1,
@@ -223,7 +280,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     addOrUpdateEvent(fullItem);
     setShowEventModal(false);
     setEditingEvent(null);
-    onNotify(`Event "${fullItem.name}" saved!`);
+    onNotify(`Event "${fullItem.name}" saved with updated prices!`);
   };
 
   return (
@@ -237,22 +294,30 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               <Shield className="w-5 h-5" />
             </span>
             <h1 className="font-display font-black text-2xl text-white">
-              Organizer & Gate Control Console
+              Organizer Panel & Pass Control
             </h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Turnstile QR Pass Verification • FastTicket Surat Automated Sync • Event Inventory
+            Edit Pass Prices • Gate Check-in • Inventory & FastTicket Sync
           </p>
         </div>
 
         {/* Sync & Copy Shortcuts */}
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => setActiveTab("ai")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 via-amber-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-amber-400/30 text-amber-300 border border-amber-500/40 transition cursor-pointer shadow-sm"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>AI Event Creator</span>
+          </button>
+
+          <button
             onClick={onOpenFastTicketCopier}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition cursor-pointer"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span>Copy Event from FastTicket</span>
+            <span>Import Event</span>
           </button>
 
           <button
@@ -261,7 +326,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition shadow-sm cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-            <span>{isSyncing ? "Syncing..." : "Sync Now from FastTicket.live"}</span>
+            <span>{isSyncing ? "Syncing..." : "Sync FastTicket"}</span>
           </button>
 
           {onLogout && (
@@ -276,69 +341,281 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800 gap-2">
-        <button
-          onClick={() => setActiveTab("scanner")}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
-            activeTab === "scanner"
-              ? "border-amber-400 text-amber-400 bg-amber-500/5"
-              : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <ScanLine className="w-4 h-4" />
-          <span>Gate Scanner Simulator</span>
-        </button>
-
+      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab("events")}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "events"
               ? "border-amber-400 text-amber-400 bg-amber-500/5"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>Manage Events ({events.length})</span>
+          <span>Events & Prices ({events.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("ai")}
+          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeTab === "ai"
+              ? "border-amber-400 text-amber-400 bg-amber-500/5 shadow-sm"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span>✨ AI Event Creator</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("scanner")}
+          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
+            activeTab === "scanner"
+              ? "border-amber-400 text-amber-400 bg-amber-500/5"
+              : "border-transparent text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <ScanLine className="w-4 h-4" />
+          <span>Gate Scanner</span>
         </button>
 
         <button
           onClick={() => setActiveTab("bookings")}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "bookings"
               ? "border-amber-400 text-amber-400 bg-amber-500/5"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
           <Ticket className="w-4 h-4" />
-          <span>Bookings & Gate Log ({bookings.length})</span>
+          <span>Bookings ({bookings.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("sync")}
-          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+          className={`py-2.5 px-4 text-xs font-bold border-b-2 transition flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "sync"
               ? "border-amber-400 text-amber-400 bg-amber-500/5"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
           <Sparkles className="w-4 h-4" />
-          <span>FastTicket Integration Audit</span>
+          <span>Sync Status</span>
         </button>
       </div>
 
-      {/* TAB 1: GATE SCANNER SIMULATOR */}
+      {/* TAB 1: MANAGE EVENTS & EDIT PRICES */}
+      {activeTab === "events" && (
+        <div className="space-y-4">
+          {/* Quick AI Creator Banner */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/50 via-slate-900 to-amber-900/20 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <span className="text-sm font-bold text-white font-display">
+                  AI Instant Event Creator (ઇન્સ્ટન્ટ ઇવેન્ટ બનાવો)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  NEW
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                ગુજરાતી કે English માં માત્ર વિગત લખો (દા.ત. &ldquo;સરસાણા ડોમ ફાલ્ગુની પાઠક ગરબા સિંગલ ૬૫૦ કપલ ૧૨૦૦&rdquo;) — AI તરત જ આખી ઇવેન્ટ અને પાસના ભાવો બનાવી દેશે!
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab("ai")}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 flex items-center gap-2 transition shadow-md shadow-amber-500/20 cursor-pointer shrink-0 font-display"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Open AI Creator</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-400">
+              Showing <strong>{events.length}</strong> active Surat events. Click <strong>Edit Prices</strong> to change pass rates anytime.
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("ai")}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>AI Create</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingEvent({
+                    name: "",
+                    area: "Sarsana",
+                    venue: "",
+                    dates: "3 – 11 Oct 2026",
+                    time: "8:00 PM – 2:00 AM",
+                    artist: "",
+                  });
+                  setPricesInput({ single: 499, couple: 899, season: 3499, vip: 6999 });
+                  setShowEventModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 hover:bg-slate-700 flex items-center gap-1.5 border border-slate-700 transition cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Manual Add</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5">Event</th>
+                    <th className="p-3.5">Venue & Area</th>
+                    <th className="p-3.5">Pass Prices (Editable)</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-850">
+                  {events.map((ev) => (
+                    <tr key={ev.id} className="hover:bg-slate-850/50 transition">
+                      <td className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="font-bold text-white line-clamp-1">{ev.name}</div>
+                          {ev.sourceName === "AI Instant Creator" && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 flex items-center gap-0.5" title="Created with AI">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>AI</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-400">{ev.artist}</div>
+                      </td>
+                      <td className="p-3.5">
+                        <div>{ev.venue}</div>
+                        <div className="text-[10px] text-amber-400">{ev.area}, Surat</div>
+                      </td>
+                      <td className="p-3.5">
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {ev.passes?.map((p) => (
+                            <span
+                              key={p.id}
+                              className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-200"
+                            >
+                              {p.name.replace(/Pass/i, "").trim()}:{" "}
+                              <strong className="text-amber-400 font-bold">₹{p.price}</strong>
+                            </span>
+                          ))}
+                          <button
+                            onClick={() => handleOpenPriceEdit(ev)}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30 transition cursor-pointer ml-1 flex items-center gap-1"
+                            title="Change prices for this event"
+                          >
+                            <Tag className="w-3 h-3" />
+                            <span>Edit Prices</span>
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3.5">
+                        <button
+                          onClick={() => handleToggleSoldOut(ev)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition cursor-pointer ${
+                            ev.isSoldOut
+                              ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                              : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                          }`}
+                        >
+                          {ev.isSoldOut ? "Sold Out" : "Active"}
+                        </button>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => handleOpenPriceEdit(ev)}
+                          className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-[11px] font-bold border border-amber-500/30 cursor-pointer"
+                        >
+                          ₹ Change Price
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingEvent(ev);
+                            const pMap: Record<string, number> = {};
+                            (ev.passes || []).forEach((p) => {
+                              pMap[p.id] = p.price;
+                            });
+                            setPricesInput({
+                              single: pMap.single || 499,
+                              couple: pMap.couple || 899,
+                              season: pMap.season || 3499,
+                              vip: pMap.vip || 6999,
+                            });
+                            setShowEventModal(true);
+                          }}
+                          className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+                          title="Edit Event Details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(ev.id, ev.name)}
+                          className="p-1.5 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-400 cursor-pointer"
+                          title="Delete Event"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: AI INSTANT EVENT CREATOR */}
+      {activeTab === "ai" && (
+        <AiEventCreator
+          onEventCreated={(newEvent) => {
+            setEvents(getStoredEvents());
+            onNotify(`Event "${newEvent.name}" created and published live!`);
+          }}
+          onOpenPriceEdit={(ev) => handleOpenPriceEdit(ev)}
+          onEditEvent={(ev) => {
+            setEditingEvent(ev);
+            const pMap: Record<string, number> = {};
+            (ev.passes || []).forEach((p) => {
+              pMap[p.id] = p.price;
+            });
+            setPricesInput({
+              single: pMap.single || 499,
+              couple: pMap.couple || 899,
+              season: pMap.season || 3499,
+              vip: pMap.vip || 6999,
+            });
+            setShowEventModal(true);
+          }}
+          onNotify={onNotify}
+        />
+      )}
+
+      {/* TAB 2: GATE SCANNER (CLEAN - NO AUTO ID DISPLAY) */}
       {activeTab === "scanner" && (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-                Turnstile Scan Terminal
+                Turnstile Gate Scanner
               </span>
               <h3 className="font-display font-bold text-lg text-white">
-                Scan Digital QR or Enter Pass ID
+                Verify Digital Pass at Gate
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Simulates official venue gate scanning hardware in Surat (SIECC Sarsana, VR Festive Lawns).
+                Scan attendee QR code or enter booking reference/attendee phone number.
               </p>
             </div>
 
@@ -348,37 +625,23 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   type="text"
                   value={scanInput}
                   onChange={(e) => setScanInput(e.target.value)}
-                  placeholder="Enter or paste Pass ID (e.g. AP-SURAT-8921)"
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white uppercase placeholder-slate-500 focus:outline-none focus:border-amber-500 font-mono font-bold"
+                  placeholder="Scan QR or Enter Booking Ref / Phone"
+                  className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white uppercase placeholder-slate-500 focus:outline-none focus:border-amber-500 font-bold"
                 />
                 <button
                   onClick={() => handleVerifyScan()}
                   className="px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition cursor-pointer shrink-0 shadow-md shadow-amber-500/20"
                 >
-                  Verify Gate Entry
+                  Verify Entry
                 </button>
               </div>
 
-              {/* Quick Test Pass IDs */}
-              <div className="space-y-1.5 pt-2">
-                <span className="text-[11px] font-semibold text-slate-400 block">
-                  Quick Demo Passes:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {bookings.slice(0, 4).map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={() => {
-                        setScanInput(b.id);
-                        handleVerifyScan(b.id);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono font-bold text-amber-400 hover:border-amber-500/60"
-                    >
-                      {b.id} ({b.name})
-                    </button>
-                  ))}
+              {bookings.length > 0 && (
+                <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                  <span>Recent passes ready for entry:</span>
+                  <span className="text-amber-400 font-semibold">{bookings.filter(b => b.status === "CONFIRMED").length} active</span>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Scan Output Screen */}
@@ -405,7 +668,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
           <div className="md:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
             <h3 className="font-display font-bold text-base text-white">
-              Gate Entry Turnstile Stats
+              Gate Turnstile Summary
             </h3>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
@@ -413,165 +676,59 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                 <span className="font-mono text-xl font-black text-white">{bookings.length}</span>
               </div>
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Scanned & Admitted</span>
+                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Admitted at Turnstile</span>
                 <span className="font-mono text-xl font-black text-emerald-400">
                   {bookings.filter((b) => b.status === "USED").length}
                 </span>
               </div>
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Ready for Gate Entry</span>
+                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Confirmed / Valid</span>
                 <span className="font-mono text-xl font-black text-amber-400">
                   {bookings.filter((b) => b.status === "CONFIRMED").length}
                 </span>
               </div>
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Active Gate Turnstiles</span>
-                <span className="font-mono text-xl font-black text-cyan-400">4 Active</span>
+                <span className="text-[10px] uppercase text-slate-400 block font-semibold">Gate Status</span>
+                <span className="font-mono text-xl font-black text-cyan-400">Online</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: MANAGE EVENTS */}
-      {activeTab === "events" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-slate-400">
-              Showing <strong>{events.length}</strong> active Surat events
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={onOpenFastTicketCopier}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1.5"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>Import from FastTicket</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setEditingEvent({
-                    name: "",
-                    area: "Sarsana",
-                    venue: "",
-                    dates: "3 – 11 Oct 2026",
-                    time: "8:00 PM – 2:00 AM",
-                    artist: "",
-                  });
-                  setShowEventModal(true);
-                }}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 hover:bg-amber-400 flex items-center gap-1.5 shadow-md shadow-amber-500/20"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Add Event</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="p-3.5">Event</th>
-                    <th className="p-3.5">Venue & Area</th>
-                    <th className="p-3.5">Dates & Time</th>
-                    <th className="p-3.5">Artist</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {events.map((ev) => (
-                    <tr key={ev.id} className="hover:bg-slate-850/50 transition">
-                      <td className="p-3.5">
-                        <div className="font-bold text-white line-clamp-1">{ev.name}</div>
-                        <div className="text-[10px] text-slate-500">{ev.sourceName || "Direct"}</div>
-                      </td>
-                      <td className="p-3.5">
-                        <div>{ev.venue}</div>
-                        <div className="text-[10px] text-amber-400">{ev.area}, Surat</div>
-                      </td>
-                      <td className="p-3.5">
-                        <div>{ev.dates}</div>
-                        <div className="text-[10px] text-slate-400">{ev.time}</div>
-                      </td>
-                      <td className="p-3.5 truncate max-w-[140px] text-slate-300">
-                        {ev.artist}
-                      </td>
-                      <td className="p-3.5">
-                        <button
-                          onClick={() => handleToggleSoldOut(ev)}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition cursor-pointer ${
-                            ev.isSoldOut
-                              ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                              : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                          }`}
-                        >
-                          {ev.isSoldOut ? "Sold Out" : "Active"}
-                        </button>
-                      </td>
-                      <td className="p-3.5 text-right space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingEvent(ev);
-                            setShowEventModal(true);
-                          }}
-                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
-                          title="Edit"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ev.id, ev.name)}
-                          className="p-1 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-400"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: BOOKINGS AUDIT */}
+      {/* TAB 3: BOOKINGS AUDIT (CLEAN - NO CRYPTIC AUTO ID COLUMN) */}
       {activeTab === "bookings" && (
         <div className="space-y-4">
           <div className="text-xs text-slate-400">
-            Audit log of all issued tickets and gate entries
+            Total Bookings: <strong>{bookings.length}</strong>
           </div>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
             <table className="w-full text-left text-xs text-slate-300">
               <thead className="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
                 <tr>
-                  <th className="p-3.5">Pass ID</th>
-                  <th className="p-3.5">Pass Holder</th>
+                  <th className="p-3.5">Attendee</th>
                   <th className="p-3.5">Event</th>
                   <th className="p-3.5">Pass Tier</th>
-                  <th className="p-3.5">Night</th>
-                  <th className="p-3.5">Total Paid</th>
+                  <th className="p-3.5">Schedule</th>
+                  <th className="p-3.5">Amount</th>
                   <th className="p-3.5">Status</th>
+                  <th className="p-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
-                {bookings.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-850/50 transition">
-                    <td className="p-3.5 font-mono font-bold text-amber-400">{b.id}</td>
+                {bookings.map((b, idx) => (
+                  <tr key={b.id || idx} className="hover:bg-slate-850/50 transition">
                     <td className="p-3.5">
-                      <div className="font-bold text-white">{b.name}</div>
-                      <div className="text-[10px] text-slate-400">{b.phone}</div>
+                      <div className="font-bold text-white">{b.name || b.customer_name}</div>
+                      <div className="text-[10px] text-slate-400">{b.phone || b.customer_phone}</div>
                     </td>
                     <td className="p-3.5 max-w-[180px] truncate">{b.event_name}</td>
-                    <td className="p-3.5">{b.pass_name} ({b.qty}x)</td>
-                    <td className="p-3.5 text-slate-400">{b.night}</td>
+                    <td className="p-3.5">
+                      <span className="font-medium text-amber-300">{b.pass_name}</span>
+                      <span className="text-slate-400 block text-[10px]">Qty: {b.qty}</span>
+                    </td>
+                    <td className="p-3.5 text-slate-300">{b.night}</td>
                     <td className="p-3.5 font-mono font-bold text-emerald-400">
                       ₹{b.total.toLocaleString("en-IN")}
                     </td>
@@ -586,6 +743,19 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                         {b.status}
                       </span>
                     </td>
+                    <td className="p-3.5 text-right">
+                      {b.status !== "USED" && (
+                        <button
+                          onClick={() => {
+                            updateBookingStatus(b.id, "USED");
+                            onNotify(`Marked ${b.name}'s pass as USED`);
+                          }}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold cursor-pointer"
+                        >
+                          Check In
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -594,7 +764,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
         </div>
       )}
 
-      {/* TAB 4: FASTTICKET INTEGRATION AUDIT */}
+      {/* TAB 4: SYNC AUDIT */}
       {activeTab === "sync" && (
         <div className="space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
@@ -610,14 +780,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               <button
                 onClick={handleSyncFastTicket}
                 disabled={isSyncing}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                 <span>Sync Now</span>
               </button>
             </div>
             <p className="text-xs text-slate-300">
-              Active endpoint: <code>https://www.fastticket.live/surat</code>. Automatically imports newly published Navratri garba arenas, concerts, and pricing updates directly into AapnoPass.
+              Active endpoint: <code>https://www.fastticket.live/surat</code>. Automatically imports newly published Navratri garba arenas and pricing.
             </p>
           </div>
 
@@ -648,12 +818,129 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
         </div>
       )}
 
-      {/* Add / Edit Event Modal */}
-      {showEventModal && (
+      {/* QUICK PRICE EDITOR MODAL */}
+      {priceEditingEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4">
+          <div className="bg-slate-900 border-2 border-amber-500/40 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="font-display font-bold text-base text-white">
+                    Edit Pass Prices
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate max-w-xs">
+                    {priceEditingEvent.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPriceEditingEvent(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePrices} className="space-y-3.5 text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-300">
+                Change prices below. Updated rates will immediately reflect on the website and in user checkout.
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  Single Night Pass (₹):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={pricesInput.single}
+                    onChange={(e) => setPricesInput({ ...pricesInput, single: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-white font-mono font-bold focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  Couple Pass 1 Night (₹):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={pricesInput.couple}
+                    onChange={(e) => setPricesInput({ ...pricesInput, couple: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-white font-mono font-bold focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  All 9 Nights Season Pass (₹):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={pricesInput.season}
+                    onChange={(e) => setPricesInput({ ...pricesInput, season: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-white font-mono font-bold focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">
+                  VIP Lounge Season Pass (₹):
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={pricesInput.vip}
+                    onChange={(e) => setPricesInput({ ...pricesInput, vip: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-white font-mono font-bold focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setPriceEditingEvent(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-amber-500 font-bold text-slate-950 hover:bg-amber-400 shadow-md cursor-pointer"
+                >
+                  Save Prices
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* FULL EVENT ADD / EDIT MODAL (WITH EXPLICIT PASS PRICE FIELDS) */}
+      {showEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 my-6">
             <h3 className="font-display font-bold text-lg text-white">
-              {editingEvent?.id ? "Edit Event" : "Create New Surat Event"}
+              {editingEvent?.id ? "Edit Event Details & Prices" : "Create New Surat Event"}
             </h3>
 
             <form onSubmit={handleSaveEvent} className="space-y-3 text-xs">
@@ -708,6 +995,55 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                 />
               </div>
 
+              {/* Explicit Pass Prices Inputs in Full Form */}
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <span className="text-amber-400 font-bold block text-[11px] uppercase tracking-wider">
+                  Pass Ticket Prices (₹):
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-slate-400 text-[10px]">Single Night Pass:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricesInput.single}
+                      onChange={(e) => setPricesInput({ ...pricesInput, single: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 text-[10px]">Couple Pass (1 Night):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricesInput.couple}
+                      onChange={(e) => setPricesInput({ ...pricesInput, couple: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 text-[10px]">Season Pass (9 Nights):</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricesInput.season}
+                      onChange={(e) => setPricesInput({ ...pricesInput, season: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 text-[10px]">VIP Lounge Pass:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={pricesInput.vip}
+                      onChange={(e) => setPricesInput({ ...pricesInput, vip: Number(e.target.value) })}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-mono font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Poster Image URL:</label>
                 <input
@@ -731,7 +1067,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-amber-500 font-bold text-slate-950 hover:bg-amber-400"
                 >
-                  Save Event
+                  Save Event & Prices
                 </button>
               </div>
             </form>

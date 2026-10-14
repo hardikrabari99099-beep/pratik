@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Lock, X, ShieldCheck, AlertCircle, ArrowRight, KeyRound } from "lucide-react";
+import { Lock, X, ShieldCheck, AlertCircle, ArrowRight } from "lucide-react";
 import { loginAdmin } from "../lib/storage";
 
 interface AdminLoginModalProps {
@@ -41,12 +41,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         setError("Invalid credentials. Please enter authorized organizer details.");
       }
     }, 400);
-  };
-
-  const handleFillDemo = () => {
-    setEmail("admin@indifunded.com");
-    setPassword("Admin@1212");
-    setError(null);
   };
 
   return (
@@ -95,7 +89,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@indifunded.com"
+              placeholder="admin@aapnopass.com"
               className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:bg-white focus:border-[#f59e0b] transition"
             />
           </div>
@@ -112,18 +106,6 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               placeholder="••••••••••••"
               className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 placeholder-neutral-400 focus:outline-none focus:bg-white focus:border-[#f59e0b] transition"
             />
-          </div>
-
-          {/* Quick Auto-Fill credential chip for testing */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={handleFillDemo}
-              className="text-[11px] text-amber-700 font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span>Auto-fill login credentials (admin@indifunded.com)</span>
-            </button>
           </div>
 
           <button
