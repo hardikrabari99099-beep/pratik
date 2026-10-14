@@ -1,0 +1,6 @@
+{
+  "name": "AapnoPass - Surat Ni Navratri, Aapno Pass",
+  "description": "Discover Surat's best Navratri Garba events, book passes online, and get your personalized digital pass.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
